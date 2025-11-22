@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results</title>
+
+    <!-- Bootstrap & Icons -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+    /* ===== Clean Black & White Theme (Readable) ===== */
+    body {
+        background: #f5f5f5;
+        color: #111;
+        font-family: 'Poppins', sans-serif;
+        min-height: 100vh;
+        margin: 0;
+        padding-bottom: 60px;
+    }
+
+    .container {
+        background: #fff;
+        border-radius: 15px;
+        padding: 40px;
+        margin-top: 40px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        color: #111;
+    }
+
+    /* ===== Score Card ===== */
+    .score-card {
+        background: #000;
+        color: #fff;
+        border-radius: 15px;
+        padding: 40px;
+        margin-bottom: 40px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .score-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .score-card h1, .score-card h2, .score-card h3, .score-card p {
+        color: #fff;
+    }
+
+    /* ===== Correct & Incorrect ===== */
+    .card.correct-answer {
+        background: #e8f5e9;
+        border-left: 5px solid #4caf50;
+        color: #1b5e20;
+    }
+
+    .card.incorrect-answer {
+        background: #ffebee;
+        border-left: 5px solid #f44336;
+        color: #b71c1c;
+    }
+
+    .learning-resources {
+        background: #fffde7;
+        border-left: 4px solid #fbc02d;
+        border-radius: 10px;
+        color: #555;
+    }
+
+    /* ===== Feedback Section ===== */
+    .feedback-section {
+        background: #fafafa;
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 40px;
+        color: #111;
+        border: 1px solid #ddd;
+    }
+
+    textarea.form-control {
+        background: #fff;
+        color: #000;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    textarea::placeholder {
+        color: #777;
+    }
+
+    /* ===== Buttons ===== */
+    .btn {
+        border-radius: 50px;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background: #000;
+        color: #fff;
+        border: none;
+    }
+
+    .btn-success {
+        background: #444;
+        color: #fff;
+        border: none;
+    }
+
+    .btn-info {
+        background: #777;
+        color: #fff;
+        border: none;
+    }
+
+    .btn:hover {
+        opacity: 0.85;
+        transform: translateY(-3px);
+    }
+
+    /* ===== Cards & Badges ===== */
+    .card {
+        border: none;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .badge-success {
+        background-color: #4caf50;
+        color: #fff;
+    }
+
+    .badge-danger {
+        background-color: #f44336;
+        color: #fff;
+    }
+
+    .badge-light {
+        background-color: #e0e0e0;
+        color: #000;
+    }
+
+    /* ===== Animation ===== */
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ===== Chart Containers ===== */
+    .chart-container {
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-top: 30px;
+    max-width: 500px;      /* Limit chart width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Smaller chart size */
+.chart-container canvas {
+    max-height: 150px;     /* Reduce height */
+    width: 100%;
+    object-fit: contain;
+}
+    </style>
+</head>
+
+<body>
+    <div class="container fade-in mt-4">
+        <!-- Score Summary -->
+        {% if quiz_session %}
+        <div class="score-card text-center">
+            <h1><i class="fas fa-trophy"></i> Quiz Results</h1>
+            <h2>{{ quiz_session.correct_answers }}/{{ quiz_session.total_questions }}</h2>
+            <h3>{{ "%.1f"|format(quiz_session.score_percentage) }}%</h3>
+            <p class="mb-0">
+                {% if quiz_session.score_percentage >= 80 %}
+                <i class="fas fa-star"></i> Excellent Performance!
+                {% elif quiz_session.score_percentage >= 60 %}
+                <i class="fas fa-thumbs-up"></i> Good Job!
+                {% else %}
+                <i class="fas fa-book"></i> Keep Learning!
+                {% endif %}
+            </p>
+
+            <!-- Charts -->
+            <div class="chart-container mt-5">
+                <h5 class="text-white">Performance Overview</h5>
+                <canvas id="scoreChart" height="90"></canvas>
+                <hr style="border-top: 1px solid #444;">
+                <h5 class="text-white mt-4">Per Question Analysis</h5>
+                <canvas id="questionChart" height="100"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Detailed Results -->
+        <h3><i class="fas fa-list-alt"></i> Detailed Results</h3>
+
+        {% for result in detailed_results %}
+        <div class="card mb-4 {{ 'correct-answer' if result.is_correct else 'incorrect-answer' }}">
+            <div class="card-body">
+                <h5 class="card-title">
+                    {% if result.is_correct %}
+                    <i class="fas fa-check-circle text-success"></i>
+                    {% else %}
+                    <i class="fas fa-times-circle text-danger"></i>
+                    {% endif %}
+                    Q{{ result.question_index }}: {{ result.question_stem }}?
+                </h5>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Answer Choices:</h6>
+                        {% set options = ['A', 'B', 'C', 'D'] %}
+                        {% for choice in result.choices %}
+                        <div class="form-check">
+                            <span class="badge 
+                                {% if options[loop.index0] == result.correct_answer %}badge-success
+                                {% elif options[loop.index0] == result.selected_answer and not result.is_correct %}badge-danger
+                                {% else %}badge-light{% endif %}">
+                                {{ options[loop.index0] }}
+                            </span>
+                            {{ choice }}
+                        </div>
+                        {% endfor %}
+                        <div class="mt-3">
+                            <strong>Your Answer:</strong> {{ result.selected_answer }}<br>
+                            <strong>Correct Answer:</strong> {{ result.correct_answer }}
+                        </div>
+                    </div>
+
+                    {% if result.learning_resources %}
+                    <div class="col-md-4">
+                        <div class="learning-resources p-3 rounded">
+                            <h6><i class="fas fa-graduation-cap"></i> Learn More</h6>
+                            {% for link in result.learning_resources.links %}
+                            <a href="{{ link.url }}" target="_blank"
+                                class="btn btn-sm btn-outline-warning mb-1 d-block">
+                                <i class="fas fa-external-link-alt"></i> {{ link.name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Feedback Section -->
+        <div class="feedback-section">
+            <h4><i class="fas fa-comment-alt"></i> Help Us Improve</h4>
+            <p>Please rate the quality of each question:</p>
+            <form method="POST" action="{{ url_for('main.submit_feedback') }}">
+                {% for result in detailed_results %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6>Q{{ result.question_index }}: {{ result.question_stem }}?</h6>
+                        <div class="form-group">
+                            <label>Rate this question:</label>
+                            <div class="form-check-inline">
+                                {% for i in range(1, 6) %}
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                        name="rating_{{ result.question_index }}"
+                                        id="rating_{{ result.question_index }}_{{ i }}" value="{{ i }}">
+                                    <label class="form-check-label" for="rating_{{ result.question_index }}_{{ i }}">{{ i }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="comment_{{ result.question_index }}">Comments (optional):</label>
+                            <textarea class="form-control" name="comment_{{ result.question_index }}"
+                                id="comment_{{ result.question_index }}" rows="2"
+                                placeholder="Any suggestions for improvement?"></textarea>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Submit Feedback
+                </button>
+            </form>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4 mb-5">
+            <a href="{{ url_for('main.download_pdf') }}" class="btn btn-success">
+                <i class="fas fa-download"></i> Download as PDF
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Generate New Quiz
+            </a>
+            <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> View Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Bootstrap + Chart.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const correct = {{ quiz_session.correct_answers }};
+            const total = {{ quiz_session.total_questions }};
+            const incorrect = total - correct;
+
+            // === Doughnut Chart (Overall Performance) ===
+            const ctx1 = document.getElementById("scoreChart").getContext("2d");
+            new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ["Correct", "Incorrect"],
+                    datasets: [{
+                        data: [correct, incorrect],
+                        backgroundColor: ["#4caf50", "#f44336"],
+                        borderColor: "#fff",
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "Overall Performance",
+                            color: "#fff"
+                        },
+                        legend: {
+                            labels: { color: "#fff" },
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // === Bar Chart (Per Question Analysis) ===
+            const ctx2 = document.getElementById("questionChart").getContext("2d");
+            const questionLabels = [{% for result in detailed_results %}"Q{{ result.question_index }}",{% endfor %}];
+            const questionScores = [{% for result in detailed_results %}{{ 1 if result.is_correct else 0 }},{% endfor %}];
+
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: questionLabels,
+                    datasets: [{
+                        label: "Correctness",
+                        data: questionScores,
+                        backgroundColor: questionScores.map(v => v ? "#4caf50" : "#f44336")
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, color: "#fff" },
+                            max: 1
+                        },
+                        x: {
+                            ticks: { color: "#fff" }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: "Question-wise Performance",
+                            color: "#fff"
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

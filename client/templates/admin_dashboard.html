@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MCQ Analytics</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .feedback-card {
+            border-left: 4px solid #007bff;
+            margin-bottom: 15px;
+        }
+        .rating-stars {
+            color: #ffc107;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <h1><i class="fas fa-chart-bar"></i> Admin Dashboard</h1>
+        <p class="lead">Analytics and feedback for MCQ generation system</p>
+
+        <!-- Statistics Overview -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="stats-card text-center">
+                    <h3><i class="fas fa-users"></i></h3>
+                    <h2>{{ total_sessions }}</h2>
+                    <p>Total Quiz Sessions</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card text-center">
+                    <h3><i class="fas fa-percentage"></i></h3>
+                    <h2>{{ "%.1f"|format(avg_score) }}%</h2>
+                    <p>Average Score</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card text-center">
+                    <h3><i class="fas fa-star"></i></h3>
+                    <h2>{{ keyword_ratings|length }}</h2>
+                    <p>Topics with Feedback</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topic Performance Analysis -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4><i class="fas fa-chart-line"></i> Topic Performance Analysis</h4>
+            </div>
+            <div class="card-body">
+                {% if keyword_ratings %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Topic/Keyword</th>
+                                <th>Average Rating</th>
+                                <th>Feedback Count</th>
+                                <th>Quality Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rating in keyword_ratings %}
+                            <tr>
+                                <td><strong>{{ rating.subject_keyword }}</strong></td>
+                                <td>
+                                    <span class="rating-stars">
+                                        {% for i in range(1, 6) %}
+                                            {% if i <= rating.avg_rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    ({{ "%.1f"|format(rating.avg_rating) }})
+                                </td>
+                                <td>{{ rating.feedback_count }}</td>
+                                <td>
+                                    {% if rating.avg_rating >= 4 %}
+                                        <span class="badge badge-success">Excellent</span>
+                                    {% elif rating.avg_rating >= 3 %}
+                                        <span class="badge badge-warning">Good</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Needs Improvement</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No feedback data available yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Feedback -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4><i class="fas fa-comments"></i> Recent User Feedback</h4>
+            </div>
+            <div class="card-body">
+                {% if recent_feedback %}
+                {% for feedback, response in recent_feedback %}
+                <div class="feedback-card card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="card-title">{{ response.question_text }}?</h6>
+                                <p class="card-text">
+                                    <strong>Topic:</strong> {{ response.subject_keyword }}<br>
+                                    <strong>User Answer:</strong> {{ response.selected_answer }} | 
+                                    <strong>Correct:</strong> {{ response.correct_answer }}
+                                    {% if response.selected_answer == response.correct_answer %}
+                                        <i class="fas fa-check text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times text-danger"></i>
+                                    {% endif %}
+                                </p>
+                                {% if feedback.comment %}
+                                <blockquote class="blockquote">
+                                    <p class="mb-0">"{{ feedback.comment }}"</p>
+                                </blockquote>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <div class="rating-stars mb-2">
+                                    {% for i in range(1, 6) %}
+                                        {% if i <= feedback.rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted">{{ feedback.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No feedback received yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h4><i class="fas fa-lightbulb"></i> Recommendations</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Areas for Improvement:</h6>
+                        <ul class="list-group list-group-flush">
+                            {% for rating in keyword_ratings %}
+                                {% if rating.avg_rating < 3 %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ rating.subject_keyword }}
+                                    <span class="badge badge-danger badge-pill">{{ "%.1f"|format(rating.avg_rating) }}</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>High-Performing Topics:</h6>
+                        <ul class="list-group list-group-flush">
+                            {% for rating in keyword_ratings %}
+                                {% if rating.avg_rating >= 4 %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ rating.subject_keyword }}
+                                    <span class="badge badge-success badge-pill">{{ "%.1f"|format(rating.avg_rating) }}</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4 mb-5">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
+            <button class="btn btn-success" onclick="window.print()">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

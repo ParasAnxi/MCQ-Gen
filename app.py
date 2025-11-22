@@ -38,12 +38,64 @@ def build_training_data(text, tokenizer, max_length):
     padded_sequences = pad_sequences(sequences, maxlen = max_length, padding = "post")
     return padded_sequences   
 
+def build_lstm_model(vocabulary_size, max_length, embedding_dimension):
+    model = Sequential([
+        Embedding(vocabulary_size , embedding_dimension, input_length = max_length),
+        LSTM(128 , return_sequences = True),
+        Dropout(0.2),
+        LSTM(64),
+        Dense(64, activation = "relu"),
+        Dense(vocabulary_size, activation = "softmax")
+    ])
+    model.compile(loss='sparse_categorical_crossentropy',optimizer='adam', metrics=['accuracy'])
+    return model
+
+
+def find_similar_words(word, similar_num = 3):
+    word_token = nlp(word)[0]
+    if not word_token.has_vector:
+        return ["[Distractor]"] * similar_num
+
+    similarities = []
+    for token in nlp.vocab:
+        if token.is_alpha and token.has_vector and token.text.lower() != word.lower():
+            similarity = word_token.similarity(token)
+            similarities.append((token.text, similarity))
+
+    similarities.sort(key=lambda x: x[1], reverse=True)
+    return [w for w, sim in similarities[:similar_num]]
+
+
+def generate_mcqs(text, tokenizer, max_length, model, n_ques = 5):
+    sentences = pre_process_text(text)
+    if not sentences:
+        return []
+
+    selected_sentences = random.sample(sentences, min(n_ques, len(sentences)))
+    mcqs = []
+    for sentence in selected_sentences:
+        doc = nlp(sentence)
+        nouns = [token.text for token in doc if token.pos_ == "NOUN"]
+        if len(nouns) < 1:
+            continue
+        subject = random.choice(nouns)
+        question_stem = sentence.replace(subject, "______")
+        similar_words = find_similar_words(subject, similar_num = 3)
+        answer_choices = [subject] + similar_words
+        random.shuffle(answer_choices)
+        correct_answer = chr(65 + answer_choices.index(subject))
+        mcqs.append((question_stem, answer_choices, correct_answer))
+    return mcqs
+
 sample_text = read_text_file('./data/sample_text.txt')
 tokenizer = Tokenizer(oov_token="<OOV>")
 tokenizer.fit_on_texts(pre_process_text(sample_text))
 padded_sequences = build_training_data(sample_text, tokenizer = tokenizer,max_length = 20)
+vocabulary_size = len(tokenizer.word_index) + 1
+max_length = 20
+model = build_lstm_model(vocabulary_size, max_length, embedding_dimension = 100)
 
-# print(padded_sequences)
+print(generate_mcqs(sample_text, tokenizer, max_length, model))
 
 # @app.route('/', methods = ["GET", "POST"])
 # def index():
